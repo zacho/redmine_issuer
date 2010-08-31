@@ -1,0 +1,19 @@
+$Id 
+
+1. Standard module installation applies. You will need to visit the settings 
+   page and save settings before the module can be used.
+
+2. The Settings pages can be found at "admin >> site configuration >> redmine issuer"
+   "http://www.example.com/admin/settings/redmine_issuer"
+
+   Set Projects, Trackers, Statuses and Priorities to reflect options on your Redmine 
+   installation.  Of course you can use a subset of options in the Redmine Issuer 
+   module.  Issue sent with options that aren't valid in your Redmine installation 
+   are likely to be silently ignored, so it really does behoove you to check.
+
+3. All settings are pretty much global for now, so if you have multiple Redmine 
+   installs you want to hit or significant per-project differences, feel free to 
+   extend this module. 
+   
+   That's pretty much it.
+
