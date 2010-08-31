@@ -147,6 +147,8 @@ function redmine_issuer_submit_issue_form() {
       '#options' => $projects,
       #'#disabled' => (count($projects)>1?FALSE:TRUE),
     );
+  } else {
+    $form['redmine_issuer_project'] = array('#type' => 'hidden', '#value' => array_shift(array_keys($projects)));
   }
 
   if( count( $trackers ) > 1 ) {
