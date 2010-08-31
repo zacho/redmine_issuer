@@ -67,4 +67,8 @@ Recent Changes
 2010-03-25  Added Redmine categories for automatic issue assignment.  
             We don't like un-assigned issues floating around.
 
+2010-07-??  Cut out anonymous submission permissions.  Better to use modern Redmine's
+            nice handling options for non-user submission.
+
+2010-08-31  Migrated to GitHub.
 
