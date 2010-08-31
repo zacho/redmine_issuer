@@ -33,15 +33,6 @@ function redmine_issuer_admin_settings() {
     '#description' => 'The email address to which new issues will be sent (e.g. redmine@example.com).',
   );
 
-  $form['redmine_issuer_anonymous_address'] = array(
-    '#type' => 'textfield',
-    '#title' => t('User Address for Anonymous Submissions'),
-    '#default_value' => variable_get('redmine_issuer_anonymous_address', null), 
-    '#size' => 30,
-    '#required' => FALSE,
-    '#description' => 'You may allow your DRUPAL users without corresponding REDMINE accounts to submit issues through a general-purpose REDMINE account.  Enter the email address for such an account here.  Don\'t forget to set your Permissions.',
-  );
-
   $form['redmine_issuer_projects'] = array(
     '#type' => 'textfield',
     '#title' => t('Redmine Project Identifier'),
