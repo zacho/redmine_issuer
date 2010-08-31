@@ -1,0 +1,7 @@
+; $Id$
+name = Redmine Issuer
+description = "Send structured emails to a Redmine-checked email address for the creation of Redmine issues."
+core = 6.x
+version = 6.x-1.x-dev
+package = Redmine
+

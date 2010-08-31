@@ -1,0 +1,14 @@
+/* $Id$ */
+
+div#edit-redmine-issuer-project-wrapper label,
+div#edit-redmine-issuer-tracker-wrapper label,
+div#edit-redmine-issuer-status-wrapper label,
+div#edit-redmine-issuer-priority-wrapper label {
+  float: left;
+  margin-right: 1.5em;
+}
+/*
+input#edit-redmine-issuer-subject {
+  width: 100%;
+}
+*/

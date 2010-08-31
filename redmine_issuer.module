@@ -1,0 +1,307 @@
+<?php
+// $Id$
+
+/**
+ * @file 
+ * Lets authenticated users send issue-creation emails to a Redmine mailbox.
+ * Issues will be sent from the users email address ($user->mail).
+ *
+ * Creates an issue-submission block, the contents of which will be formatted 
+ * into a Redmine-compatible email and sent off.
+ */
+
+
+/** 
+ *Implementation of hook_user(). 
+ */ 
+/*
+function redmine_issuer_user($op, &$edit, &$account, $category = NULL) {
+  if ($op == 'form' && $category == 'account') {
+    if (user_access('administer redmine issuer')) {
+      $form['redmine_issuer_settings'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Redmine Issuer settings'),
+        '#collapsible' => TRUE,
+        '#weight' => 5,
+      );
+      $form['redmine_issuer_settings']['redmine_use_global_email'] = array(
+        '#type' => 'checkbox',
+        '#title' => 'Send Redmine issues from Sitewide email address',
+        '#default_value' => $account->redmine_use_global_email,
+        '#description' => 'If checked, Redmine issues submitted by this user will originate from the site email address as set in Administer › Site configuration > Site information.  If unchecked, messages will originate from the user\'s own email address.<br/><br/>This may be useful if you have Drupal users without corresponding accounts in your Redmine system.',
+      );
+    }
+    return $form;
+  }
+}
+*/
+
+
+/** 
+ *Implementation of hook_menu(). 
+ */
+function redmine_issuer_menu() {
+  $items['admin/settings/redmine_issuer'] = array(
+    'title' => 'Redmine Issuer',
+    'description' => 'Configure Redmine Issuer to match Redmine project settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('redmine_issuer_admin_settings'),
+    'access arguments' => array('administer redmine issuer'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'redmine_issuer.admin.inc',
+  );
+  
+  return $items;
+}
+
+/** 
+ *Implementation of hook_perm(). 
+ */
+function redmine_issuer_perm() {
+  return array('administer redmine issuer', 'submit redmine issues', 'use redmine anonymous address');
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function redmine_issuer_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+    case 'list':
+      $blocks[0]['info'] = t('Redmine Issuer');
+      $blocks[0]['cache'] = BLOCK_NO_CACHE;
+      return $blocks;
+/*
+    case 'configure':
+      $form['redmine_issuer_description_height'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Height of Redmine Issue description form'),
+        '$default_value'  => variable_get('redmine_issuer_description_height', 10),
+      );
+      return $form;
+    case 'save': 
+      variable_set('redmine_issuer_description_height', (int)$edit['redmine_issuer_description_height']); 
+      break; 
+*/
+    case 'view':
+      if (user_access('submit redmine issues')) {
+        $mailbox = variable_get( 'redmine_issuer_mailbox', null );
+        
+        // if $mailbox is unset then we cannot proceed.
+        // instead, print a link to the configuration page.
+        if( $mailbox ) {
+          $block['subject'] = t('Submit Redmine Issue');
+          $block['content'] = drupal_get_form('redmine_issuer_submit_issue_form');
+        } else {
+          $block['subject'] = t('Configure Redmine Issuer');
+          $items[] = 'You probably need to visit the ' . l(t('configuration page'), 'admin/settings/redmine_issuer') . ' at admin/settings/redmine_issuer.';
+        }
+      }
+      return $block;
+  }
+}
+
+
+function redmine_issuer_theme() {
+  return array(
+    'redmine_issuer_submit_issue_form' => array(
+      'arguments' => array('form' => NULL)
+    )
+  );
+}
+
+function theme_redmine_issuer_submit_issue_form($form) {
+  return '<div class="redmine">' . drupal_render($form) . '</div>';
+}
+
+
+function redmine_issuer_submit_issue_form() {
+
+  drupal_add_css(drupal_get_path('module', 'redmine_issuer') .'/redmine_issuer.css');
+
+  $mailbox    = variable_get( 'redmine_issuer_mailbox', null );
+  $projects   = redmine_issuer_array_keys_equal_values( explode( ',', variable_get('redmine_issuer_projects',   array()) ) );
+  $trackers   = redmine_issuer_array_keys_equal_values( explode( ',', variable_get('redmine_issuer_trackers',   array()) ) );
+  $statuses   = redmine_issuer_array_keys_equal_values( explode( ',', variable_get('redmine_issuer_statuses',   array()) ) );
+  $priorities = redmine_issuer_array_keys_equal_values( explode( ',', variable_get('redmine_issuer_priorities', array()) ) );
+  $categories = redmine_issuer_array_keys_equal_values( explode( ',', variable_get('redmine_issuer_categories', array()) ) );
+  
+
+  $form['redmine_issuer_subject'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Subject',
+    '#size' => '25',
+  );
+  $form['redmine_issuer_description'] = array(
+    '#type' => 'textarea',
+    '#title' => 'Description',
+#    '#cols' => '15',
+    '#rows' => '5',
+    '#default_value' => null,
+  );
+
+  if( count( $projects ) > 1 ) {
+    $form['redmine_issuer_project'] = array(
+      '#type' => 'select',
+      '#title' => t('Project'),
+      '#default_value' => array_shift(array_keys($projects)),
+      '#options' => $projects,
+      #'#disabled' => (count($projects)>1?FALSE:TRUE),
+    );
+  }
+
+  if( count( $trackers ) > 1 ) {
+    $form['redmine_issuer_tracker'] = array(
+      '#type' => 'select',
+      '#title' => t('Tracker'),
+      '#default_value' => array_shift(array_keys($trackers)),
+      '#options' => $trackers,
+    );
+  } else {
+    $form['redmine_issuer_tracker'] = array('#type' => 'hidden', '#value' => array_shift(array_keys($trackers)));
+  }
+
+  if( count( $statuses ) > 1 ) {
+    $form['redmine_issuer_status'] = array(
+      '#type' => 'select',
+      '#title' => t('Status'),
+      '#default_value' => array_shift(array_keys($statuses)),
+      '#options' => $statuses,
+    );
+  } else {
+    $form['redmine_issuer_status'] = array('#type' => 'hidden', '#value' => array_shift(array_keys($statuses)));
+  }
+
+  if( count( $priorities ) > 1 ) {
+    $form['redmine_issuer_priority'] = array(
+      '#type' => 'select',
+      '#title' => t('Priority'),
+      '#default_value' => array_shift(array_keys($priorities)),
+      '#options' => $priorities,
+    );
+  } else {
+    $form['redmine_issuer_priority'] = array('#type' => 'hidden', '#value' => array_shift(array_keys($priorities)));
+  }
+
+  if( count( $categories ) > 1 ) {
+    $form['redmine_issuer_category'] = array(
+      '#type' => 'select',
+      '#title' => t('Categories'),
+      '#default_value' => array_shift(array_keys($categories)),
+      '#options' => $categories,
+    );
+  } else {
+    $form['redmine_issuer_category'] = array(
+      '#type' => 'hidden', 
+      '#value' => array_shift(array_keys($categories)),
+    );
+  }
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Send',
+  );
+
+  return $form;
+
+}
+
+/**
+ * Validate the form.
+ */
+function redmine_issuer_submit_issue_form_validate($form, &$form_state) {
+  $subject = $form_state['values']['redmine_issuer_subject'];
+  $description = $form_state['values']['redmine_issuer_description'];
+  if (empty($subject)) {
+    form_set_error('redmine_issuer_subject', 'Subject is a required field.');
+  }
+  if (empty($description)) {
+    form_set_error('redmine_issuer_description', 'What is an issue without a description?');
+  }
+}
+
+
+/**
+ * Create the hook_mail function
+ * Required in Drupal 6
+ */
+function redmine_issuer_submit_issue_form_mail($key, &$message, $params) {
+ 
+  $headers = array(
+    'MIME-Version' => '1.0',
+    'Content-Type' => 'text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding' => '8Bit',
+    'X-Mailer' => 'Drupal',
+  );
+ 
+  foreach ($headers as $key => $value) {
+    $message['headers'][$key] = $value;
+  }
+ 
+  $message['subject'] = $params['subject'];
+  $message['body'] = $params['body'];
+
+}
+
+
+/**
+ * Create the form submit function
+ */
+function redmine_issuer_submit_issue_form_submit($form, &$form_state) {
+
+    global $user, $base_url;
+
+    $body = $form_state['values']['redmine_issuer_description'];
+    $body .= "
+\n
+\n";
+
+    $to = variable_get( 'redmine_issuer_mailbox', null );
+#    if ($user->redmine_use_global_email) {
+#      $from = variable_get('site_mail', ini_get('sendmail_from'));
+    if (user_access('use redmine anonymous address')) {
+      $from = variable_get('redmine_issuer_anonymous_address',null);
+      $body .= "(Issued by ". $user->mail ." from ".$base_url." using the Redmine Issuer)";
+    }
+    else {
+      $from = $user->mail;
+    }
+
+    $body .= "
+\n
+\n
+Project: " . $form_state['values']['redmine_issuer_project'] . "
+Tracker: " . $form_state['values']['redmine_issuer_tracker'] . "
+Status: "  . $form_state['values']['redmine_issuer_status'] . "
+Priority: ". $form_state['values']['redmine_issuer_priority'] . "
+Category: ". $form_state['values']['redmine_issuer_category'] . "
+\n";
+  
+    $params = array(
+    'body' => $body,
+    'subject' => $form_state['values']['redmine_issuer_subject'],
+    );
+  
+    //NB First argument of the drupal_mail function must match the first part of the hook_mail function.
+    //Therefore the first argument is  'redmine_issuer_submit_issue_form' and the the mail hook is 'redmine_issuer_submit_issue_form_mail'
+    //For more info see:
+    //http://api.drupal.org/api/function/drupal_mail/6     
+    //http://api.drupal.org/api/function/hook_mail/6
+   
+    if (drupal_mail('redmine_issuer_submit_issue_form', 'issue', $to, language_default(), $params, $from, TRUE))
+    {
+        drupal_set_message('An email has been sent to ' . $to . ' from ' . $from );      
+    } else {
+        drupal_set_message('There was an error sending your email');
+    }
+}
+
+
+function redmine_issuer_array_keys_equal_values($in_array) {
+  foreach( $in_array as $key => $value ) {
+    $out_array[strtolower($value)] = $value;
+  }
+  return($out_array);
+}
+
+
+?>
