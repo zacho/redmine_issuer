@@ -305,5 +305,3 @@ function redmine_issuer_array_keys_equal_values($in_array) {
   return($out_array);
 }
 
-
-?>

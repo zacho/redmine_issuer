@@ -82,5 +82,3 @@ function redmine_issuer_admin_settings() {
 
 }
 
-
-?>
